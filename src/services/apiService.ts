@@ -1,0 +1,224 @@
+import { Communication } from '../types';
+
+// Database configuration
+const DB_CONFIG = {
+  host: 'localhost',
+  port: 3306,
+  database: 'bountiplydb',
+  user: 'admin',
+  password: 'Admin123!'
+};
+
+// API service class for handling database operations
+export class ApiService {
+  private baseUrl: string;
+
+  constructor(baseUrl: string = process.env.REACT_APP_API_URL || 'http://localhost:8000/api') {
+    this.baseUrl = baseUrl;
+  }
+
+  // Fetch jewelry images for a specific ticket
+  async fetchJewelryImages(ticketId: string): Promise<JewelryImage[]> {
+    console.log('🔄 Making API call to fetch jewelry images for ticket:', ticketId);
+
+    try {
+      const response = await fetch(`${this.baseUrl}/tickets`);
+      console.log('📡 Jewelry images API Response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('📦 Raw jewelry images data received:', data);
+
+      // The API returns an array of tickets, each with jewelry_images
+      if (Array.isArray(data)) {
+        console.log('📦 Looking for ticket with ID:', ticketId);
+
+        // Find the ticket that matches the provided ticketId
+        const targetTicket = data.find((ticket: any) => ticket.ticket_number === ticketId);
+
+        if (targetTicket && targetTicket.jewelry_images && Array.isArray(targetTicket.jewelry_images)) {
+          console.log('📦 Found ticket with', targetTicket.jewelry_images.length, 'jewelry images');
+          // Filter out items without image_data
+          const validItems = targetTicket.jewelry_images.filter((item: any) => item && item.image_data);
+          console.log('📦 Valid items with image_data:', validItems.length);
+          return validItems;
+        } else {
+          console.log('📦 No jewelry images found for ticket:', ticketId);
+          return [];
+        }
+      } else {
+        console.log('📦 Unexpected response format - expected array');
+        return [];
+      }
+    } catch (error) {
+      console.error('❌ Error fetching jewelry images from API:', error);
+      console.error('🌐 API URL attempted:', `${this.baseUrl}/tickets`);
+      return [];
+    }
+  }
+
+  // Fetch communications data from the database
+  async fetchCommunications(): Promise<Communication[]> {
+    console.log('🔄 Making API call to:', `${this.baseUrl}/tickets`);
+
+    try {
+      const response = await fetch(`${this.baseUrl}/tickets`);
+      console.log('📡 API Response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: TicketApiResponse[] = await response.json();
+      console.log('📦 Raw API data received:', data);
+      console.log('📊 Number of tickets received:', data.length);
+
+      // Transform the API response to match our Communication interface
+      const transformedData = data.map(ticket => transformTicketApiResponse(ticket));
+      console.log('✨ Transformed data:', transformedData);
+      console.log('🎯 Returning data with length:', transformedData.length);
+
+      return transformedData;
+    } catch (error) {
+      console.error('❌ Error fetching tickets from API:', error);
+      console.error('🌐 API URL attempted:', `${this.baseUrl}/tickets`);
+
+      // For now, return empty array on error
+      // In production, you might want to throw the error or return cached data
+      return [];
+    }
+  }
+
+  // Method to get database configuration (for backend setup)
+  static getDatabaseConfig() {
+    return DB_CONFIG;
+  }
+}
+
+// Create and export a singleton instance
+export const apiService = new ApiService();
+
+// SQL query that should be used on the backend:
+export const COMMUNICATIONS_QUERY = `
+  SELECT
+    CONCAT(u.first_name, ' ', u.last_name) as customer_name,
+    u.email,
+    o.subject,
+    o.ticket_number,
+    o.order_number,
+    o.date_modified as last_update_date,
+    o.status
+  FROM users u
+  JOIN order o ON u.id = o.user_id
+  ORDER BY o.date_modified DESC
+`;
+
+// Type for the raw database result
+export interface DatabaseResult {
+  customer_name: string;
+  email: string;
+  subject: string;
+  ticket_number: string;
+  order_number: string;
+  last_update_date: string;
+  status: string;
+}
+
+// Type for the API response from /tickets endpoint
+export interface TicketApiResponse {
+  customer_name: string;
+  email: string;
+  subject: string;
+  ticket_number: string;
+  order_number: number;
+  last_update_date: string;
+}
+
+// Transform database result to Communication format
+export const transformDatabaseResult = (dbResult: DatabaseResult): Communication => {
+  return {
+    id: `comm-${dbResult.order_number}-${dbResult.ticket_number}`,
+    customerName: dbResult.customer_name,
+    email: dbResult.email,
+    subject: dbResult.subject,
+    ticketNumber: dbResult.ticket_number,
+    orderNumber: dbResult.order_number,
+    status: mapDatabaseStatus(dbResult.status),
+    date: formatDatabaseDate(dbResult.last_update_date)
+  };
+};
+
+// Transform API ticket response to Communication format
+export const transformTicketApiResponse = (ticket: TicketApiResponse): Communication => {
+  return {
+    id: `ticket-${ticket.order_number}-${ticket.ticket_number}`,
+    customerName: ticket.customer_name,
+    email: ticket.email,
+    subject: ticket.subject,
+    ticketNumber: ticket.ticket_number,
+    orderNumber: ticket.order_number.toString(),
+    status: 'Pending', // Default status since API doesn't provide it
+    date: formatDatabaseDate(ticket.last_update_date)
+  };
+};
+
+// Map database status to our Communication status enum
+const mapDatabaseStatus = (status: string): 'Pending' | 'In Progress' | 'Completed' | 'Cancelled' => {
+  if (!status) return 'Pending';
+
+  switch (status.toLowerCase()) {
+    case 'completed':
+    case 'complete':
+    case 'done':
+      return 'Completed';
+    case 'processing':
+    case 'in_progress':
+    case 'in-progress':
+      return 'In Progress';
+    case 'cancelled':
+    case 'canceled':
+      return 'Cancelled';
+    default:
+      return 'Pending';
+  }
+};
+
+// Format database date to readable string
+const formatDatabaseDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  } catch {
+    return new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  }
+};
+
+// Type for jewelry image data
+export interface JewelryImage {
+  jewelry_item_id: number;
+  weight: number;
+  purity: string;
+  metal_type: string;
+  unit_of_measure: string;
+  estimated_value: number;
+  after_fees_value: number;
+  price_per_gram: number;
+  image_data: string; // file path for image (e.g., "images/filename.jpeg")
+  timestamp: string;
+}
+
+// Type for the API response containing jewelry images
+export interface JewelryImagesApiResponse {
+  jewelry_images: JewelryImage[];
+}

@@ -1,0 +1,125 @@
+.notification-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.notification-modal-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  min-width: 400px;
+  max-width: 500px;
+  margin: 20px;
+  animation: notification-modal-fade-in 0.3s ease-out;
+}
+
+@keyframes notification-modal-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.notification-modal-header {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+  gap: 12px;
+}
+
+.notification-modal-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 18px;
+  color: white;
+}
+
+.notification-modal-icon.success {
+  background-color: #4CAF50;
+}
+
+.notification-modal-icon.error {
+  background-color: #f44336;
+}
+
+.notification-modal-header h3 {
+  margin: 0;
+  flex-grow: 1;
+  font-size: 18px;
+  color: #333;
+}
+
+.notification-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.notification-modal-close:hover {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.notification-modal-body {
+  padding: 20px;
+}
+
+.notification-modal-body p {
+  margin: 0;
+  color: #555;
+  line-height: 1.5;
+}
+
+.notification-modal-actions {
+  padding: 20px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.notification-modal-ok {
+  background-color: #5B8FCF;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.notification-modal-ok:hover {
+  background-color: #4A7BC8;
+}
+
+.notification-modal-ok:active {
+  background-color: #3966A8;
+}
