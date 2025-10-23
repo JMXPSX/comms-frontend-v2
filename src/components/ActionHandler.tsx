@@ -1,14 +1,14 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
+// Backend API URL from environment variable
+const BACKEND_API_URL = process.env.REACT_APP_PUBLIC_API_URL;
+
 export default function ActionHandler() {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("Processing your request...");
   const hasCalledAPI = useRef(false);
-
-  // Backend API URL from environment variable
-  const BACKEND_API_URL = process.env.REACT_APP_PUBLIC_API_URL;
 
   useEffect(() => {
     const action = searchParams.get("action");

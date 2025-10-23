@@ -8,15 +8,6 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ filters, onFilterChange }) => {
-  const filterItems = [
-    { key: 'email' as keyof FilterOptions, label: 'By Email', icon: 'E' },
-    { key: 'subject' as keyof FilterOptions, label: 'By Subject', icon: 'S' },
-    { key: 'ticketNumber' as keyof FilterOptions, label: 'By Ticket Number', icon: 'T' },
-    { key: 'orderNumber' as keyof FilterOptions, label: 'By Order Number', icon: 'O' },
-    { key: 'status' as keyof FilterOptions, label: 'By Status', icon: 'S' },
-    { key: 'date' as keyof FilterOptions, label: 'By Date', icon: 'D' },
-  ];
-
   return (
     <aside className="sidebar">
       <div className="sidebar-header">

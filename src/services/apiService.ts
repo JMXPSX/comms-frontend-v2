@@ -29,28 +29,45 @@ export class ApiService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
-      console.log('📦 Raw jewelry images data received:', data);
+      const rawData = await response.json();
+      console.log('📦 Raw jewelry images data received:', rawData);
+      console.log('📦 Is array:', Array.isArray(rawData));
 
-      // The API returns an array of tickets, each with jewelry_images
-      if (Array.isArray(data)) {
-        console.log('📦 Looking for ticket with ID:', ticketId);
+      // Handle different response formats
+      let ticketsData: any[];
 
-        // Find the ticket that matches the provided ticketId
-        const targetTicket = data.find((ticket: any) => ticket.ticket_number === ticketId);
-
-        if (targetTicket && targetTicket.jewelry_images && Array.isArray(targetTicket.jewelry_images)) {
-          console.log('📦 Found ticket with', targetTicket.jewelry_images.length, 'jewelry images');
-          // Filter out items without image_data
-          const validItems = targetTicket.jewelry_images.filter((item: any) => item && item.image_data);
-          console.log('📦 Valid items with image_data:', validItems.length);
-          return validItems;
+      if (Array.isArray(rawData)) {
+        ticketsData = rawData;
+      } else if (rawData && typeof rawData === 'object') {
+        if (rawData.tickets && Array.isArray(rawData.tickets)) {
+          ticketsData = rawData.tickets;
+        } else if (rawData.data && Array.isArray(rawData.data)) {
+          ticketsData = rawData.data;
+        } else if (rawData.results && Array.isArray(rawData.results)) {
+          ticketsData = rawData.results;
         } else {
-          console.log('📦 No jewelry images found for ticket:', ticketId);
+          console.log('📦 Unexpected response format - expected array or object with tickets/data/results');
+          console.log('📦 Response keys:', Object.keys(rawData));
           return [];
         }
       } else {
-        console.log('📦 Unexpected response format - expected array');
+        console.log('📦 Invalid response format');
+        return [];
+      }
+
+      console.log('📦 Looking for ticket with ID:', ticketId);
+
+      // Find the ticket that matches the provided ticketId
+      const targetTicket = ticketsData.find((ticket: any) => ticket.ticket_number === ticketId);
+
+      if (targetTicket && targetTicket.jewelry_images && Array.isArray(targetTicket.jewelry_images)) {
+        console.log('📦 Found ticket with', targetTicket.jewelry_images.length, 'jewelry images');
+        // Filter out items without image_data
+        const validItems = targetTicket.jewelry_images.filter((item: any) => item && item.image_data);
+        console.log('📦 Valid items with image_data:', validItems.length);
+        return validItems;
+      } else {
+        console.log('📦 No jewelry images found for ticket:', ticketId);
         return [];
       }
     } catch (error) {
@@ -72,8 +89,35 @@ export class ApiService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data: TicketApiResponse[] = await response.json();
-      console.log('📦 Raw API data received:', data);
+      const rawData = await response.json();
+      console.log('📦 Raw API data received:', rawData);
+      console.log('📦 Raw API data type:', typeof rawData);
+      console.log('📦 Is array:', Array.isArray(rawData));
+
+      // Handle different response formats
+      let data: TicketApiResponse[];
+
+      if (Array.isArray(rawData)) {
+        // Response is already an array
+        data = rawData;
+      } else if (rawData && typeof rawData === 'object') {
+        // Response is an object, check for common property names
+        if (rawData.tickets && Array.isArray(rawData.tickets)) {
+          data = rawData.tickets;
+        } else if (rawData.data && Array.isArray(rawData.data)) {
+          data = rawData.data;
+        } else if (rawData.results && Array.isArray(rawData.results)) {
+          data = rawData.results;
+        } else {
+          console.error('❌ Unknown API response format. Expected array or object with tickets/data/results property');
+          console.log('📦 Response keys:', Object.keys(rawData));
+          return [];
+        }
+      } else {
+        console.error('❌ Invalid API response format');
+        return [];
+      }
+
       console.log('📊 Number of tickets received:', data.length);
 
       // Transform the API response to match our Communication interface

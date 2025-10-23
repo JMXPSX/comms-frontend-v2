@@ -78,6 +78,26 @@ Would you like to proceed with receiving your share of the appraisal value or pr
   }
 ];
 
+// Configuration: Frontend URL for email action handling
+const FRONTEND_URL = process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
+
+// Configuration: Public API URL for images
+const PUBLIC_API_URL = process.env.REACT_APP_PUBLIC_API_URL;
+
+// Helper function to get public image URL for email
+const getPublicImageSrc = (imagePath: string): string => {
+  if (!imagePath || typeof imagePath !== 'string') {
+    return '';
+  }
+  // Extract filename from the path
+  const filename = imagePath.split('/').pop();
+  if (!filename) {
+    return '';
+  }
+  // Use the public URL for email
+  return `${PUBLIC_API_URL}/images/${filename}`;
+};
+
 const ReplyModal: React.FC<ReplyModalProps> = ({
   isOpen,
   onClose,
@@ -92,42 +112,6 @@ const ReplyModal: React.FC<ReplyModalProps> = ({
   const [message, setMessage] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [jewelryItems, setJewelryItems] = useState<JewelryItem[]>([]);
-
-  // Helper function to get image src from path
-  const getImageSrc = (imagePath: string): string => {
-    if (!imagePath || typeof imagePath !== 'string') {
-      return '';
-    }
-    // Extract filename from the path
-    const filename = imagePath.split('/').pop();
-    if (!filename) {
-      return '';
-    }
-    // For local preview, use local API
-    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-    return `${baseUrl}/images/${filename}`;
-  };
-
-  // Configuration: Frontend URL for email action handling
-  const FRONTEND_URL = process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
-
-  // Configuration: Public API URL for images (still using ngrok for now)
-  // const PUBLIC_API_URL = process.env.REACT_APP_PUBLIC_API_URL || 'https://c6d316a274a4.ngrok-free.app/api';
-  const PUBLIC_API_URL = process.env.REACT_APP_PUBLIC_API_URL;
-
-  // Helper function to get public image URL for email
-  const getPublicImageSrc = (imagePath: string): string => {
-    if (!imagePath || typeof imagePath !== 'string') {
-      return '';
-    }
-    // Extract filename from the path
-    const filename = imagePath.split('/').pop();
-    if (!filename) {
-      return '';
-    }
-    // Use the public URL for email
-    return `${PUBLIC_API_URL}/images/${filename}`;
-  };
 
 
   // Initialize jewelry items based on images when switching to final-appraisal
@@ -213,7 +197,7 @@ ${actionButtonsHtml}`;
 
       setMessage(personalizedContent);
     }
-  }, [selectedTemplate, customerName, jewelryItems]);
+  }, [selectedTemplate, customerName, jewelryItems, ticketNumber]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
