@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
-// Backend API URL from environment variable
-const BACKEND_API_URL = process.env.REACT_APP_PUBLIC_API_URL;
+// Use local backend API URL to avoid CORS issues when called from browser
+const BACKEND_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8213/api/v1';
 
 export default function ActionHandler() {
   const [searchParams] = useSearchParams();
