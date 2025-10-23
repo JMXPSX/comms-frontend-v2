@@ -30,6 +30,11 @@ const JewelryImages: React.FC<JewelryImagesProps> = ({ images, loading = false }
       return '';
     }
 
+    // If the path is already a full URL (starts with http:// or https://), return it as-is
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+
     // Extract filename from the path (e.g., "images/filename.jpeg" -> "filename.jpeg")
     const filename = imagePath.split('/').pop();
 
@@ -39,7 +44,8 @@ const JewelryImages: React.FC<JewelryImagesProps> = ({ images, loading = false }
     }
 
     // Construct the full URL using the backend base URL
-    return `http://localhost:8000/api/images/${filename}`;
+    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+    return `${baseUrl}/images/${filename}`;
   };
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
