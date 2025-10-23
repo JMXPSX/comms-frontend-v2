@@ -15,6 +15,8 @@ export default function ActionHandler() {
     const ticketNumber = searchParams.get("ticket_number");
     const customerEmail = searchParams.get("email");
 
+    console.log('🔍 ActionHandler - Received params:', { action, ticketNumber, customerEmail });
+
     if (!action || !ticketNumber) {
       setStatus("error");
       setMessage("Invalid request: missing action or ticket number");
@@ -27,23 +29,59 @@ export default function ActionHandler() {
     }
     hasCalledAPI.current = true;
 
+    const requestUrl = `${BACKEND_API_URL}/shopify/webhook`;
+    const requestBody = {
+      action,
+      ticket_number: ticketNumber,
+      email: customerEmail || undefined // Make email optional
+    };
+
+    console.log('📤 ActionHandler - Sending request:', {
+      url: requestUrl,
+      method: 'PUT',
+      body: requestBody
+    });
+
     // Call your backend API
-    fetch(`${BACKEND_API_URL}/shopify/webhook`, {
+    fetch(requestUrl, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, ticket_number: ticketNumber, email: customerEmail })
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(requestBody)
     })
-      .then(res => {
+      .then(async res => {
+        console.log('📡 ActionHandler - Response status:', res.status);
+
         if (!res.ok) {
-          throw new Error(`Server responded with status: ${res.status}`);
+          // Try to get error message from response
+          let errorMessage = `Server responded with status: ${res.status}`;
+          try {
+            const errorData = await res.json();
+            console.error('❌ ActionHandler - Error response:', errorData);
+            errorMessage = errorData.message || errorData.error || errorMessage;
+          } catch (e) {
+            // If response is not JSON, try to get text
+            try {
+              const errorText = await res.text();
+              console.error('❌ ActionHandler - Error text:', errorText);
+              if (errorText) errorMessage = errorText;
+            } catch (e2) {
+              console.error('❌ ActionHandler - Could not parse error response');
+            }
+          }
+          throw new Error(errorMessage);
         }
         return res.json();
       })
       .then(data => {
+        console.log('✅ ActionHandler - Success response:', data);
         setStatus("success");
         setMessage(getSuccessMessage(action));
       })
       .catch(err => {
+        console.error('❌ ActionHandler - Error:', err);
         setStatus("error");
         setMessage(`Error processing your request: ${err.message}`);
       });
