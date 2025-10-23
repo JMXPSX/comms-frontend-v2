@@ -8,7 +8,6 @@ export default function ActionHandler() {
   const hasCalledAPI = useRef(false);
 
   // Backend API URL from environment variable
-  // const BACKEND_API_URL = process.env.REACT_APP_PUBLIC_API_URL || 'https://c6d316a274a4.ngrok-free.app/api';
   const BACKEND_API_URL = process.env.REACT_APP_PUBLIC_API_URL;
 
   useEffect(() => {
