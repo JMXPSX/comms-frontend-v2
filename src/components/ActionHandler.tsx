@@ -29,7 +29,7 @@ export default function ActionHandler() {
     }
     hasCalledAPI.current = true;
 
-    const requestUrl = `${BACKEND_API_URL}/shopify/webhook`;
+    const requestUrl = `${BACKEND_API_URL}/customer-actions/process`;
     const requestBody = {
       action,
       ticket_number: ticketNumber,
@@ -42,7 +42,7 @@ export default function ActionHandler() {
       body: requestBody
     });
 
-    // Call your backend API
+    // Call backend API to process customer action
     fetch(requestUrl, {
       method: "PUT",
       headers: {
@@ -54,31 +54,24 @@ export default function ActionHandler() {
       .then(async res => {
         console.log('📡 ActionHandler - Response status:', res.status);
 
-        if (!res.ok) {
-          // Try to get error message from response
-          let errorMessage = `Server responded with status: ${res.status}`;
-          try {
-            const errorData = await res.json();
-            console.error('❌ ActionHandler - Error response:', errorData);
-            errorMessage = errorData.message || errorData.error || errorMessage;
-          } catch (e) {
-            // If response is not JSON, try to get text
-            try {
-              const errorText = await res.text();
-              console.error('❌ ActionHandler - Error text:', errorText);
-              if (errorText) errorMessage = errorText;
-            } catch (e2) {
-              console.error('❌ ActionHandler - Could not parse error response');
-            }
-          }
+        // Parse response first (both success and error responses are JSON)
+        const data = await res.json();
+        console.log('📦 ActionHandler - Response data:', data);
+
+        if (!res.ok || !data.success) {
+          // Backend returned error response
+          const errorMessage = data.message || `Server responded with status: ${res.status}`;
+          console.error('❌ ActionHandler - Error response:', data);
           throw new Error(errorMessage);
         }
-        return res.json();
+
+        return data;
       })
       .then(data => {
         console.log('✅ ActionHandler - Success response:', data);
         setStatus("success");
-        setMessage(getSuccessMessage(action));
+        // Use the message from backend response
+        setMessage(data.message || getSuccessMessage(action));
       })
       .catch(err => {
         console.error('❌ ActionHandler - Error:', err);
