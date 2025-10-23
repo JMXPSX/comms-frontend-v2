@@ -89,12 +89,18 @@ const getPublicImageSrc = (imagePath: string): string => {
   if (!imagePath || typeof imagePath !== 'string') {
     return '';
   }
-  // Extract filename from the path
+
+  // If the path is already a full URL (S3 URL), return it as-is
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+
+  // Extract filename from the path for legacy local paths
   const filename = imagePath.split('/').pop();
   if (!filename) {
     return '';
   }
-  // Use the public URL for email
+  // Use the public URL for email (for legacy local image paths)
   return `${PUBLIC_API_URL}/images/${filename}`;
 };
 
