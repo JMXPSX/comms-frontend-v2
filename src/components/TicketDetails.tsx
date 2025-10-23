@@ -5,6 +5,7 @@ import { ZendeskComment, ZendeskTicket } from '../types/zendesk';
 import { apiService, JewelryImage } from '../services/apiService';
 import JewelryImages from './JewelryImages';
 import ReplyModal from './ReplyModal';
+import PaymentModal from './PaymentModal';
 import NotificationModal from './NotificationModal';
 import { webhookHandler, WebhookResponse } from '../utils/webhookHandler';
 import './TicketDetails.css';
@@ -19,6 +20,7 @@ const TicketDetails: React.FC = () => {
   const [jewelryImagesLoading, setJewelryImagesLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isReplyModalOpen, setIsReplyModalOpen] = useState<boolean>(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
 
   // Notification modal state
   const [notificationModal, setNotificationModal] = useState<{
@@ -146,8 +148,7 @@ const TicketDetails: React.FC = () => {
 
   const handleProceedToPayment = () => {
     console.log('Proceed to Payment clicked for ticket:', ticketNumber);
-    // TODO: Implement payment processing logic
-    // This could navigate to a payment page or open a payment modal
+    setIsPaymentModalOpen(true);
   };
 
   const handleReply = () => {
@@ -238,6 +239,21 @@ const TicketDetails: React.FC = () => {
       }
     }
     return 'Customer';
+  };
+
+  const getOrderNumber = (): string => {
+    // Use ticket number as order number for now
+    // You can modify this if you have a different source for order number
+    return ticketNumber || 'N/A';
+  };
+
+  const getSuggestedPaymentAmount = (): number => {
+    // Calculate total from after_fees_value of all jewelry items
+    if (jewelryImages && jewelryImages.length > 0) {
+      const total = jewelryImages.reduce((sum, item) => sum + (item.after_fees_value || 0), 0);
+      return total;
+    }
+    return 0;
   };
 
   if (loading) {
@@ -400,6 +416,15 @@ const TicketDetails: React.FC = () => {
         jewelryImages={jewelryImages}
         onSubmit={handleReplySubmit}
         onWebhookAction={handleWebhookAction}
+      />
+
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        orderNumber={getOrderNumber()}
+        recipientEmail={getCustomerEmail()}
+        ticketNumber={ticketNumber || ''}
+        suggestedAmount={getSuggestedPaymentAmount()}
       />
 
       <NotificationModal
