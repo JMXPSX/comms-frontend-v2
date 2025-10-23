@@ -33,7 +33,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const [currency, setCurrency] = useState<'USD' | 'PHP'>('USD');
   const [note, setNote] = useState<string>('Jewelry appraisal payout');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [showMessage, setShowMessage] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,8 +83,11 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
       console.log('✅ PaymentModal - Payment successful:', data);
 
-      // Show success message
-      setShowMessage(true);
+      // Close modal and refresh page to show updated data
+      handleClose();
+
+      // Refresh the page after successful payment
+      window.location.reload();
 
     } catch (error) {
       console.error('❌ PaymentModal - Error:', error);
@@ -95,7 +97,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   const handleClose = () => {
-    setShowMessage(false);
     setErrorMessage('');
     setAmount(suggestedAmount > 0 ? suggestedAmount.toFixed(2) : '');
     setVendor('paypal');
@@ -106,42 +107,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   if (!isOpen) return null;
-
-  if (showMessage) {
-    return (
-      <div className="modal-overlay" onClick={handleClose}>
-        <div className="modal-container payment-modal" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-header">
-            <h2>Message</h2>
-            <button onClick={handleClose} className="modal-close">&times;</button>
-          </div>
-          <div className="modal-form">
-            <div className="message-content">
-              <div className="message-field">
-                <label>Order #{orderNumber}</label>
-              </div>
-              <div className="message-field">
-                <label>To: {recipientEmail}</label>
-              </div>
-              <div className="message-field">
-                <label>Response Template: Payment Sent</label>
-              </div>
-              <div className="message-body">
-                <p>Dear [Customer],</p>
-                <p>Your share of the total appraisal value has been sent.</p>
-                <p>Thank you for using our service.</p>
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button onClick={handleClose} className="send-button">
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
