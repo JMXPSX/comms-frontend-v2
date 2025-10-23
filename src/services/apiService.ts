@@ -39,14 +39,16 @@ export class ApiService {
       if (Array.isArray(rawData)) {
         ticketsData = rawData;
       } else if (rawData && typeof rawData === 'object') {
-        if (rawData.tickets && Array.isArray(rawData.tickets)) {
+        if (rawData.object && Array.isArray(rawData.object)) {
+          ticketsData = rawData.object;
+        } else if (rawData.tickets && Array.isArray(rawData.tickets)) {
           ticketsData = rawData.tickets;
         } else if (rawData.data && Array.isArray(rawData.data)) {
           ticketsData = rawData.data;
         } else if (rawData.results && Array.isArray(rawData.results)) {
           ticketsData = rawData.results;
         } else {
-          console.log('📦 Unexpected response format - expected array or object with tickets/data/results');
+          console.log('📦 Unexpected response format - expected array or object with object/tickets/data/results');
           console.log('📦 Response keys:', Object.keys(rawData));
           return [];
         }
@@ -57,17 +59,32 @@ export class ApiService {
 
       console.log('📦 Looking for ticket with ID:', ticketId);
 
-      // Find the ticket that matches the provided ticketId
-      const targetTicket = ticketsData.find((ticket: any) => ticket.ticket_number === ticketId);
+      // Find the ticket that matches the provided ticketId (new API uses ticketNumber)
+      const targetTicket = ticketsData.find((ticket: any) => ticket.ticketNumber === ticketId || ticket.ticket_number === ticketId);
 
-      if (targetTicket && targetTicket.jewelry_images && Array.isArray(targetTicket.jewelry_images)) {
-        console.log('📦 Found ticket with', targetTicket.jewelry_images.length, 'jewelry images');
-        // Filter out items without image_data
-        const validItems = targetTicket.jewelry_images.filter((item: any) => item && item.image_data);
-        console.log('📦 Valid items with image_data:', validItems.length);
+      if (targetTicket && targetTicket.items && Array.isArray(targetTicket.items)) {
+        console.log('📦 Found ticket with', targetTicket.items.length, 'items');
+
+        // Transform new API structure to match existing JewelryImage interface
+        const transformedItems = targetTicket.items.map((item: any) => ({
+          jewelry_item_id: item.id,
+          weight: item.weight,
+          purity: item.purity,
+          metal_type: item.metalType,
+          unit_of_measure: item.unitOfMeasure,
+          estimated_value: item.appraisedAmount,
+          after_fees_value: item.actualAmount,
+          price_per_gram: item.appraisedAmount / item.weight, // Calculate price per gram
+          image_data: item.imageUrl, // Use imageUrl as image_data
+          timestamp: targetTicket.dateModified || new Date().toISOString()
+        }));
+
+        // Filter out items without image URLs
+        const validItems = transformedItems.filter((item: any) => item && item.image_data);
+        console.log('📦 Valid items with images:', validItems.length);
         return validItems;
       } else {
-        console.log('📦 No jewelry images found for ticket:', ticketId);
+        console.log('📦 No items found for ticket:', ticketId);
         return [];
       }
     } catch (error) {
@@ -102,14 +119,16 @@ export class ApiService {
         data = rawData;
       } else if (rawData && typeof rawData === 'object') {
         // Response is an object, check for common property names
-        if (rawData.tickets && Array.isArray(rawData.tickets)) {
+        if (rawData.object && Array.isArray(rawData.object)) {
+          data = rawData.object;
+        } else if (rawData.tickets && Array.isArray(rawData.tickets)) {
           data = rawData.tickets;
         } else if (rawData.data && Array.isArray(rawData.data)) {
           data = rawData.data;
         } else if (rawData.results && Array.isArray(rawData.results)) {
           data = rawData.results;
         } else {
-          console.error('❌ Unknown API response format. Expected array or object with tickets/data/results property');
+          console.error('❌ Unknown API response format. Expected array or object with object/tickets/data/results property');
           console.log('📦 Response keys:', Object.keys(rawData));
           return [];
         }
@@ -171,14 +190,34 @@ export interface DatabaseResult {
   status: string;
 }
 
-// Type for the API response from /tickets endpoint
+// Type for the API response from /tickets endpoint (new API structure)
 export interface TicketApiResponse {
-  customer_name: string;
-  email: string;
-  subject: string;
-  ticket_number: string;
-  order_number: number;
-  last_update_date: string;
+  id: number;
+  ticketNumber: string;
+  sessionId: string;
+  shopifyOrderId: string;
+  orderNumber: string;
+  customerFirstName: string;
+  customerLastName: string;
+  customerEmail: string;
+  customerFullName: string;
+  address1: string;
+  address2: string | null;
+  city: string;
+  province: string;
+  country: string;
+  zipCode: string;
+  provinceCode: string;
+  countryCode: string;
+  currency: string;
+  status: string;
+  orderType: string;
+  orderDate: string;
+  dateModified: string;
+  items?: any[];
+  itemCount?: number;
+  totalAppraisedAmount?: number;
+  totalActualAmount?: number;
 }
 
 // Transform database result to Communication format
@@ -195,17 +234,22 @@ export const transformDatabaseResult = (dbResult: DatabaseResult): Communication
   };
 };
 
-// Transform API ticket response to Communication format
+// Transform API ticket response to Communication format (new API structure)
 export const transformTicketApiResponse = (ticket: TicketApiResponse): Communication => {
+  // Create a subject from orderType - convert snake_case to Title Case
+  const subject = ticket.orderType
+    ? ticket.orderType.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+    : 'Order Inquiry';
+
   return {
-    id: `ticket-${ticket.order_number}-${ticket.ticket_number}`,
-    customerName: ticket.customer_name,
-    email: ticket.email,
-    subject: ticket.subject,
-    ticketNumber: ticket.ticket_number,
-    orderNumber: ticket.order_number.toString(),
-    status: 'Pending', // Default status since API doesn't provide it
-    date: formatDatabaseDate(ticket.last_update_date)
+    id: `ticket-${ticket.orderNumber}-${ticket.ticketNumber}`,
+    customerName: ticket.customerFullName,
+    email: ticket.customerEmail,
+    subject: subject,
+    ticketNumber: ticket.ticketNumber,
+    orderNumber: ticket.orderNumber,
+    status: mapDatabaseStatus(ticket.status),
+    date: formatDatabaseDate(ticket.dateModified)
   };
 };
 
