@@ -1,46 +1,34 @@
 import { ZendeskComment, ZendeskCommentsResponse } from '../types/zendesk';
 
 export class ZendeskService {
-  private domain: string;
-  private email: string;
-  private token: string;
+  private baseUrl: string;
 
   constructor() {
-    const domain = process.env.REACT_APP_ZENDESK_DOMAIN;
-    const email = process.env.REACT_APP_ZENDESK_EMAIL;
-    const token = process.env.REACT_APP_ZENDESK_TOKEN;
+    const apiUrl = process.env.REACT_APP_API_URL;
 
-    if (!domain || !email || !token) {
-      throw new Error('Missing Zendesk environment variables: REACT_APP_ZENDESK_DOMAIN, REACT_APP_ZENDESK_EMAIL, REACT_APP_ZENDESK_TOKEN');
+    if (!apiUrl) {
+      throw new Error('Missing environment variable: REACT_APP_API_URL');
     }
 
-    this.domain = domain;
-    this.email = email;
-    this.token = token;
+    this.baseUrl = apiUrl;
   }
 
-  private getAuthHeader(): string {
-    const credentials = btoa(`${this.email}/token:${this.token}`);
-    return `Basic ${credentials}`;
-  }
-
-  // Upload an attachment to Zendesk
-  async uploadAttachment(imageBlob: Blob, filename: string): Promise<string> {
-    const url = `${this.domain}/api/v2/uploads.json?filename=${encodeURIComponent(filename)}`;
+  // Upload an attachment via backend
+  async uploadAttachment(imageBlob: Blob, filename: string, ticketId: string): Promise<string> {
+    const url = `${this.baseUrl}/tickets/${ticketId}/upload?filename=${encodeURIComponent(filename)}`;
 
     try {
-      console.log('🔄 Uploading attachment to Zendesk:', filename);
+      console.log('🔄 Uploading attachment via backend:', filename);
 
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Authorization': this.getAuthHeader(),
           'Content-Type': imageBlob.type,
         },
         body: imageBlob
       });
 
-      console.log('📡 Zendesk Upload Response status:', response.status, response.statusText);
+      console.log('📡 Backend Upload Response status:', response.status, response.statusText);
 
       if (!response.ok) {
         throw new Error(`Failed to upload attachment: ${response.status} ${response.statusText}`);
@@ -84,54 +72,52 @@ export class ZendeskService {
   }
 
   async fetchTicketComments(ticketNumber: string): Promise<ZendeskComment[]> {
-    const url = `${this.domain}/api/v2/tickets/${ticketNumber}/comments.json`;
+    const url = `${this.baseUrl}/tickets/${ticketNumber}/comments`;
 
     try {
-      console.log('🔄 Fetching Zendesk ticket comments for ticket:', ticketNumber);
+      console.log('🔄 Fetching ticket comments via backend for ticket:', ticketNumber);
       console.log('🌐 API URL:', url);
 
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': this.getAuthHeader(),
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
       });
 
-      console.log('📡 Zendesk API Response status:', response.status, response.statusText);
+      console.log('📡 Backend API Response status:', response.status, response.statusText);
 
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error(`Ticket ${ticketNumber} not found`);
         } else if (response.status === 401) {
-          throw new Error('Invalid Zendesk credentials');
+          throw new Error('Authentication failed');
         } else {
-          throw new Error(`Zendesk API error: ${response.status} ${response.statusText}`);
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
         }
       }
 
       const data: ZendeskCommentsResponse = await response.json();
-      console.log('📦 Raw Zendesk data received:', data);
+      console.log('📦 Raw data received from backend:', data);
       console.log('📊 Number of comments received:', data.comments?.length || 0);
 
       return data.comments || [];
     } catch (error) {
-      console.error('❌ Error fetching Zendesk ticket comments:', error);
+      console.error('❌ Error fetching ticket comments:', error);
       throw error;
     }
   }
 
   async fetchTicketDetails(ticketNumber: string): Promise<any> {
-    const url = `${this.domain}/api/v2/tickets/${ticketNumber}.json`;
+    const url = `${this.baseUrl}/tickets/${ticketNumber}/details`;
 
     try {
-      console.log('🔄 Fetching Zendesk ticket details for ticket:', ticketNumber);
+      console.log('🔄 Fetching ticket details via backend for ticket:', ticketNumber);
 
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': this.getAuthHeader(),
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
@@ -141,24 +127,24 @@ export class ZendeskService {
         if (response.status === 404) {
           throw new Error(`Ticket ${ticketNumber} not found`);
         } else if (response.status === 401) {
-          throw new Error('Invalid Zendesk credentials');
+          throw new Error('Authentication failed');
         } else {
-          throw new Error(`Zendesk API error: ${response.status} ${response.statusText}`);
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
         }
       }
 
       const data = await response.json();
-      console.log('📦 Zendesk ticket details received:', data);
+      console.log('📦 Ticket details received from backend:', data);
 
       return data.ticket || null;
     } catch (error) {
-      console.error('❌ Error fetching Zendesk ticket details:', error);
+      console.error('❌ Error fetching ticket details:', error);
       throw error;
     }
   }
 
   async addTicketComment(ticketNumber: string, message: string, isPublic: boolean = true): Promise<any> {
-    const url = `${this.domain}/api/v2/tickets/${ticketNumber}.json`;
+    const url = `${this.baseUrl}/tickets/${ticketNumber}`;
 
     // Check if message contains HTML
     const isHtml = message.includes('<p>') || message.includes('<div>') || message.includes('<strong>');
@@ -173,36 +159,35 @@ export class ZendeskService {
     };
 
     try {
-      console.log('🔄 Sending reply to ticket:', ticketNumber);
+      console.log('🔄 Sending reply via backend to ticket:', ticketNumber);
       console.log('📝 Message:', message);
 
       const response = await fetch(url, {
         method: 'PUT',
         headers: {
-          'Authorization': this.getAuthHeader(),
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
         body: JSON.stringify(payload)
       });
 
-      console.log('📡 Zendesk API Response status:', response.status, response.statusText);
+      console.log('📡 Backend API Response status:', response.status, response.statusText);
 
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error(`Ticket ${ticketNumber} not found`);
         } else if (response.status === 401) {
-          throw new Error('Invalid Zendesk credentials');
+          throw new Error('Authentication failed');
         } else if (response.status === 422) {
           const errorData = await response.json();
           throw new Error(`Validation error: ${JSON.stringify(errorData)}`);
         } else {
-          throw new Error(`Zendesk API error: ${response.status} ${response.statusText}`);
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
         }
       }
 
       const data = await response.json();
-      console.log('✅ Reply sent successfully:', data);
+      console.log('✅ Reply sent successfully via backend:', data);
 
       return data;
     } catch (error) {
